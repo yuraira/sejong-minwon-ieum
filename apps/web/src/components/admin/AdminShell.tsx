@@ -18,7 +18,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import FixtureNotice from "@/components/common/FixtureNotice";
-import Logo from "@/components/common/Logo";
+import { Wordmark } from "@/components/common/Logo";
 import {
   createAdminTransport,
   type AdminActor,
@@ -53,6 +53,7 @@ export function useAdmin(): AdminContextValue {
 
 const MENU = [
   { href: "/admin", label: "운영 현황", tabLabel: "운영 현황" },
+  { href: "/admin/analytics", label: "실패 분석", tabLabel: "실패 분석" },
   { href: "/admin/failures", label: "실패 질문", tabLabel: "실패 질문" },
   { href: "/admin/kb-candidates", label: "KB 후보 승인", tabLabel: "KB 후보" },
 ];
@@ -71,6 +72,13 @@ const PHILOSOPHY: Record<string, React.ReactNode> = {
       근거 부족 실패만
       <br />
       <b className="text-white">KB 후보로 전환</b>됩니다.
+    </>
+  ),
+  "/admin/analytics": (
+    <>
+      반복 실패를 먼저 묶고,
+      <br />
+      <b className="text-white">KB 보강 우선순위</b>를 정합니다.
     </>
   ),
   "/admin/kb-candidates": (
@@ -182,13 +190,13 @@ export default function AdminShell({
         {/* 768px 미만: 상단 고정 바 - 로고 줄 + 메뉴 탭 줄 (모바일 정비 1) */}
         <header className="sticky top-0 z-40 bg-admin-nav md:hidden">
           <div className="flex h-14 items-center justify-between gap-2 px-4">
-            {/* 워드마크 문법(최종 폴리시 4): 흰 변형은 "이음"만 밝은 하늘색 */}
-            <span className="flex items-center gap-1.5 text-[17px] font-extrabold text-white">
-              <Logo className="h-5 w-5 shrink-0 text-white" />
-              <span>
-                <span className="text-tie-line">이음</span>센터
+            <Link href="/" className="rounded-btn-s" aria-label="시민 메인으로 이동">
+              <span className="flex items-center gap-1.5 text-[17px] font-extrabold text-white">
+                <span>
+                  <span className="text-tie-line">이음</span>센터
+                </span>
               </span>
-            </span>
+            </Link>
             <label className="sr-only" htmlFor="demo-role-mobile">
               시연 역할
             </label>
@@ -242,17 +250,25 @@ export default function AdminShell({
           </nav>
         </header>
 
-        <aside className="hidden w-[216px] shrink-0 flex-col gap-[22px] bg-admin-nav px-3.5 py-[22px] md:flex">
+        <aside className="sticky top-0 hidden h-screen w-[216px] shrink-0 flex-col gap-[22px] overflow-y-auto bg-admin-nav px-3.5 py-[22px] md:flex">
           {/* 브랜드 - 로고 심볼 흰색 변형 (§5-1) */}
           <div className="px-2">
-            <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-tie-line">
-              <Logo className="h-4 w-4 shrink-0 text-white" />
-              세종 민원이음 관리자
-            </span>
-            {/* 워드마크 문법(최종 폴리시 4): 흰 변형은 "이음"만 밝은 하늘색 */}
-            <p className="mt-0.5 text-[20px] font-extrabold text-white">
-              <span className="text-tie-line">이음</span>센터
-            </p>
+            <Link
+              href="/"
+              aria-label="시민 메인으로 이동"
+              className="block rounded-btn-s p-1 hover:bg-white/[0.06]"
+            >
+              <span className="text-[12.5px] font-semibold text-tie-line">
+                세종 민원이음 관리자
+              </span>
+              <div className="mt-1">
+                <Wordmark
+                  tone="inverse"
+                  symbolClassName="h-5 w-5"
+                  textClassName="text-[20px] font-extrabold"
+                />
+              </div>
+            </Link>
           </div>
 
           <nav aria-label="관리자 메뉴">

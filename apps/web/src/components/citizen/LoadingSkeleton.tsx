@@ -6,9 +6,32 @@
  */
 export default function LoadingSkeleton({
   message = "공식 자료에서 확인하고 있어요.",
+  phase = "masking",
 }: {
   message?: string;
+  phase?: "masking" | "searching" | "verifying";
 }) {
+  const steps = [
+    {
+      key: "masking",
+      label: "개인정보를 먼저 가리고 있어요",
+      done: phase !== "masking",
+      active: phase === "masking",
+    },
+    {
+      key: "searching",
+      label: "승인된 KB와 공식 출처를 찾고 있어요",
+      done: phase === "verifying",
+      active: phase === "searching",
+    },
+    {
+      key: "verifying",
+      label: "답변 근거와 폴백 여부를 점검하고 있어요",
+      done: false,
+      active: phase === "verifying",
+    },
+  ] as const;
+
   return (
     <div
       role="status"
@@ -26,16 +49,32 @@ export default function LoadingSkeleton({
           <span className="h-4 w-[92%] animate-pulse rounded-chip bg-border-soft" />
           <span className="h-4 w-[74%] animate-pulse rounded-chip bg-border-soft" />
         </div>
-        {/* 번호 원 + 텍스트 스텝 2개 */}
+        {/* 단계형 진행 표시 - 실제 대기 단계와 문구를 맞춘다 */}
         <div className="flex flex-col gap-2.5">
-          <div className="flex items-center gap-3">
-            <span className="h-7 w-7 shrink-0 animate-pulse rounded-full bg-border-soft" />
-            <span className="h-3.5 w-[60%] animate-pulse rounded-chip bg-bg-sub" />
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="h-7 w-7 shrink-0 animate-pulse rounded-full bg-border-soft" />
-            <span className="h-3.5 w-[48%] animate-pulse rounded-chip bg-bg-sub" />
-          </div>
+          {steps.map((step, index) => (
+            <div key={step.key} className="flex items-center gap-3">
+              <span
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-extrabold ${
+                  step.done
+                    ? "bg-verify-light-2 text-verify-dark"
+                    : step.active
+                      ? "bg-primary-light text-primary"
+                      : "bg-border-soft text-text-faint"
+                }`}
+              >
+                {step.done ? "✓" : index + 1}
+              </span>
+              <span
+                className={`text-note ${
+                  step.active
+                    ? "font-semibold text-text"
+                    : "text-text-sub"
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+          ))}
         </div>
         {/* 출처 블록 자리 - 초록 계열 (출처가 올 것임을 예고) */}
         <div className="h-16 animate-pulse rounded-card-s border border-verify-border bg-verify-light" />

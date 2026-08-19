@@ -157,6 +157,13 @@ body {
   line-height: 1.5;
 }
 
+input,
+select,
+textarea,
+button {
+  background-clip: padding-box;
+}
+
 /* v3 §11: focus-visible 링 - 흰 띠 2px + 남색 링 3px, 전 인터랙티브 요소 */
 :focus-visible {
   outline: none;

@@ -36,6 +36,24 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "LEGAL_JUDGMENT", label: STORED_REASON_LABEL.LEGAL_JUDGMENT },
 ];
 
+const REASON_POLICY = [
+  {
+    key: "INSUFFICIENT_GROUNDING",
+    title: "근거 부족",
+    detail: "마스킹 질문을 30일 보관하고, 운영자가 KB 후보로 전환할 수 있습니다.",
+  },
+  {
+    key: "PERSONAL_LOOKUP",
+    title: "개인 조회 필요",
+    detail: "질문 텍스트는 저장하지 않고 공식 조회 채널로 연결합니다.",
+  },
+  {
+    key: "LEGAL_JUDGMENT",
+    title: "법적 판단 필요",
+    detail: "질문 텍스트는 저장하지 않고 기관 상담 안내로 닫습니다.",
+  },
+] as const;
+
 /**
  * 직전 로드의 id 집합 - 모듈 스코프로 유지해 페이지를 떠났다 돌아와도
  * "새로 등장한" 행을 판별한다 (§9-2 - 데모 #5에서 시민 폴백이 도착하는
@@ -298,6 +316,27 @@ export default function AdminFailuresPage() {
             <span>신규 {newCount}건</span>
           </p>
         )}
+
+        <section className="mt-3 grid gap-3 md:grid-cols-3" aria-label="사유별 처리 기준">
+          {REASON_POLICY.map((item) => (
+            <article
+              key={item.key}
+              className="rounded-btn border border-border-soft bg-white p-4"
+            >
+              <h2 className="text-admin-body font-extrabold text-text">
+                {item.title}
+              </h2>
+              <p className="mt-2 text-note text-text-sub">{item.detail}</p>
+            </article>
+          ))}
+        </section>
+
+        <div className="mt-3 rounded-btn border border-primary-border bg-primary-light px-4 py-3 text-note text-text-sub">
+          KB 승인 후 ACTIVE가 되려면 승인자가 작성자와 달라야 하고, 공식 출처·요약·질문 예시가 모두 채워져 있어야 합니다.{" "}
+          <Link href="/admin/analytics" className="font-bold text-primary underline hover:text-primary-dark">
+            전체 폴백 정책과 실패 추이 보기
+          </Link>
+        </div>
 
         {/* 저장 사유 3종 필터 - r-pill, 활성=primary 채움 (§9-2) */}
         <div
