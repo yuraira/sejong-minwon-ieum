@@ -4,6 +4,10 @@
 집중한 약 3분 30초 분량의 녹화 기준안이다. 실제 편집에서는 화면 전환 시점에 맞춰
 각 구간 시작 시간을 조정하되, 수치의 표본·회차·판정 기준은 생략하지 않는다.
 
+- 업로드용 SRT: [`PRESENTATION_SUBTITLES_KO.srt`](./PRESENTATION_SUBTITLES_KO.srt)
+- 웹 플레이어용 WebVTT: [`PRESENTATION_SUBTITLES_KO.vtt`](./PRESENTATION_SUBTITLES_KO.vtt)
+- 영상 원본의 장면 길이가 달라지면 아래 표와 자막 파일의 타임코드를 함께 조정한다.
+
 | 시간 | 화면 | 자막·내레이션 |
 | --- | --- | --- |
 | 00:00-00:12 | 타이틀 | 세종 민원이음은 모르면 지어내지 않고, 알면 공식 근거와 함께 끝까지 안내합니다. |

@@ -79,7 +79,9 @@ is_test
 
 ## 6. 실패 질문 추가 필드
 
-`INSUFFICIENT_GROUNDING`과 개선 검토가 필요한 지원 범위 내 질문에 한해 다음 필드를 저장한다.
+현재 local/private MVP에서는 `INSUFFICIENT_GROUNDING`과 별도 범위 확대 검토 대상인
+`CIVIC_SCOPE_GAP`에 한해 다음 필드를 저장한다. 이 기준은 관리자 화면과 README의 폴백
+정책표에 표시된 저장 범위와 같다.
 
 ```text
 masked_question
@@ -89,15 +91,14 @@ text_expires_at
 text_purged_at
 ```
 
-- `PERSONAL_LOOKUP`: 마스킹 질문 저장 가능하나 후보 적격은 false
-- `LEGAL_JUDGMENT`: 마스킹 질문 저장 가능하나 후보 적격은 false
+- `INSUFFICIENT_GROUNDING`: `masked_question`을 30일 보관하며 KB 후보 작성 가능
+- `CIVIC_SCOPE_GAP`: PII-safe `masked_question`을 별도 범위 확대 검토 큐에 30일 보관하며,
+  PM의 범위 편입 결정 전에는 KB 후보 작성·ACTIVE 전환 금지
+- `PERSONAL_LOOKUP`: 질문 text·실패 질문 행·후보 저장 금지
+- `LEGAL_JUDGMENT`: 질문 text·실패 질문 행·후보 저장 금지
 - `OUT_OF_SCOPE`: 텍스트 저장 금지, 이벤트만 저장
 - `PRIVACY_UNRESOLVED`: 텍스트 저장·실패 질문 행·후보·provider 호출 금지, 질문 없는 이벤트만 저장
-- 2026-07-25 local/private MVP에서는 D-059가 위 일반 정책보다 좁게 적용된다. `PERSONAL_LOOKUP`과 `LEGAL_JUDGMENT`도 질문 text·event·실패 질문 행·후보를 만들지 않는다.
 - `FOLLOWUP`: 실패가 아니므로 실패 질문 목록에 저장하지 않음
-- `CIVIC_SCOPE_GAP` planned: Q-SCOPE-001=A/ADR-0024에 따라 별도 범위확대 검토
-  queue에 PII-safe `masked_question`만 30일 보관하고 기존 failed/KB candidate와 분리한다.
-  자동 ACTIVE 승격은 금지하며 exact contract·migration 구현 전 current runtime에는 적용하지 않는다.
 - `NON_CIVIC` planned: 질문 text와 review row를 저장하지 않는다.
 - `text_expires_at`: `created_at + 30일`; 실패 행 전체가 아니라 `masked_question` 텍스트의 만료 시각
 - `text_purged_at`: 파기 전에는 NULL, 파기 후에는 실제 처리 시각
