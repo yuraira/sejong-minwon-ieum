@@ -2,8 +2,7 @@
 
 /**
  * 이음센터 운영 현황(Overview) - DESIGN.md v3 §9-1, 계약 적응판.
- * KPI 카드 5개(목표 판정 뱃지) + 최근 실패 질문 패널 + 지표 안내.
- * 신규 기능·차트 절대 금지(P1) - P0 데이터의 뷰 재배치만.
+ * KPI 카드 5개(목표 판정 뱃지) + 실패 패턴 요약 + 최근 실패 질문 패널.
  *
  * KPI 값: 계약의 /api/v1/admin/quality-summary는 200 응답 스키마가 정의되어
  * 있지 않아 typed 연동이 불가능하다 (계약 변경 필요 항목으로 보고).
@@ -22,6 +21,7 @@ import PageHeader from "@/components/admin/PageHeader";
 
 type FailedQuestion = components["schemas"]["FailedQuestion"];
 type FeedbackSummaryResponse = components["schemas"]["FeedbackSummaryResponse"];
+type FailureReasonKey = FailedQuestion["fallback_reason"];
 
 const percent = (v: number) => `${Math.round(v * 100)}`;
 
@@ -65,24 +65,45 @@ const KPI_GUIDE: { id: string; name: string; desc: string }[] = [
   {
     id: "kpi-guide-answer-rate",
     name: "자동 답변 성공률",
-    desc: "전체 질문 중 승인된 KB 근거로 답변(SUCCESS)한 비율. 목표 80% 이상",
+    desc: "핵심 20문항과 데모 5문항을 15회 회귀 측정했을 때 승인된 KB 근거로 답변(SUCCESS)한 비율. 목표 80% 이상",
   },
   {
     id: "kpi-guide-fallback-rate",
     name: "폴백률",
-    desc: "전체 질문 중 담당 기관 연결(폴백)로 안내한 비율",
+    desc: "전체 질문 중 담당 기관 연결(폴백)로 안내한 비율. 근거 부족·개인 조회·법적 판단 같은 사유별 차이를 함께 본다",
   },
   {
     id: "kpi-guide-response-time",
     name: "평균 응답시간",
-    desc: "질문 접수부터 답변 표시까지 평균 소요 시간. 목표 3초 이내",
+    desc: "질문 접수부터 답변 표시까지 평균 소요 시간. 표본 25문항을 15회 측정했고 목표는 3초 이내",
   },
   {
     id: "kpi-guide-citation-rate",
     name: "출처 표기율",
-    desc: "SUCCESS 답변 중 출처 카드가 표시된 비율. 목표 100%",
+    desc: "SUCCESS 답변 중 출처 카드와 확인일이 함께 표시된 비율. 목표 100%",
   },
 ];
+
+const FAILURE_POLICY: Record<
+  FailureReasonKey,
+  { label: string; retention: string; candidate: string }
+> = {
+  INSUFFICIENT_GROUNDING: {
+    label: "근거 부족",
+    retention: "마스킹 질문을 30일 보관",
+    candidate: "운영자 작성 후 별도 승인자 검수",
+  },
+  PERSONAL_LOOKUP: {
+    label: "개인 조회 필요",
+    retention: "질문 텍스트 미저장",
+    candidate: "KB 후보 비대상, 공식 조회 채널 안내",
+  },
+  LEGAL_JUDGMENT: {
+    label: "법적 판단 필요",
+    retention: "질문 텍스트 미저장",
+    candidate: "KB 후보 비대상, 기관 상담 안내",
+  },
+};
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -91,9 +112,43 @@ function formatDateTime(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function summarizeFailures(items: FailedQuestion[]) {
+  const reasonCounts = new Map<FailureReasonKey, number>();
+  const repeated = new Map<string, number>();
+  let candidateEligible = 0;
+  let purged = 0;
+
+  for (const item of items) {
+    reasonCounts.set(
+      item.fallback_reason,
+      (reasonCounts.get(item.fallback_reason) ?? 0) + 1,
+    );
+    if (item.candidate_eligible) candidateEligible += 1;
+    if (item.masked_question === null) {
+      purged += 1;
+      continue;
+    }
+    repeated.set(item.masked_question, (repeated.get(item.masked_question) ?? 0) + 1);
+  }
+
+  return {
+    reasonRows: (Object.keys(FAILURE_POLICY) as FailureReasonKey[]).map((reason) => ({
+      reason,
+      count: reasonCounts.get(reason) ?? 0,
+      ...FAILURE_POLICY[reason],
+    })),
+    candidateEligible,
+    purged,
+    repeated: [...repeated.entries()]
+      .filter(([, count]) => count > 1)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 3),
+  };
+}
+
 export default function AdminOverviewPage() {
   const { transport, actor, mode } = useAdmin();
-  const [recent, setRecent] = useState<FailedQuestion[] | null>(null);
+  const [failures, setFailures] = useState<FailedQuestion[] | null>(null);
   const [feedback, setFeedback] = useState<FeedbackSummaryResponse | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -103,6 +158,8 @@ export default function AdminOverviewPage() {
   );
 
   const kpi = mode === "fixture" ? DEMO_KPI : null;
+  const recent = failures?.slice(0, 5) ?? null;
+  const failureSummary = failures ? summarizeFailures(failures) : null;
 
   /** KPI 스트립 지표명 탭 → 지표 안내 해당 항목으로 스크롤 + 1회 하이라이트 */
   const goGuide = useCallback((id: string) => {
@@ -122,17 +179,16 @@ export default function AdminOverviewPage() {
         transport.getFeedbackSummary(actor),
       ])
         .then(([failures, feedbackSummary]) => {
-          // 최신 5건 (실패 질문 화면과 동일 데이터 재사용)
-          setRecent(
-            [...failures.items]
-              .sort((a, b) => b.created_at.localeCompare(a.created_at))
-              .slice(0, 5),
+          setFailures(
+            [...failures.items].sort((a, b) =>
+              b.created_at.localeCompare(a.created_at),
+            ),
           );
           setFeedback(feedbackSummary);
           setLastUpdated(new Date());
         })
         .catch(() => {
-          setRecent([]);
+          setFailures([]);
           setFeedback(null);
         }),
     [actor, transport],
@@ -182,10 +238,10 @@ export default function AdminOverviewPage() {
             >
               <p className="text-admin-body text-text">
                 품질 지표(quality-summary)는 응답 스키마가 확정되지 않아 아직
-                연동하지 않았습니다.
+                자동 연동하지 않았습니다.
               </p>
               <p className="mt-1 text-admin-body text-text-sub">
-                계약 확정 후 이 자리에 실측 지표가 표시됩니다.
+                현재 문서에는 표본 25문항, 15회 회귀 측정 기준을 함께 적어 두었습니다.
               </p>
             </section>
           ) : (
@@ -237,6 +293,98 @@ export default function AdminOverviewPage() {
               />
             </div>
           )}
+
+          <section
+            aria-label="실패 패턴 요약"
+            className="rounded-panel border border-border bg-white p-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-[16px] font-extrabold text-text">
+                  실패 패턴 요약
+                </h2>
+                <p className="mt-1 text-admin-body text-text-sub">
+                  실패 질문을 저장 사유, 후보 전환 가능 여부, 반복 패턴으로 묶어 보는 운영 레이어입니다.
+                </p>
+              </div>
+              <Link
+                href="/admin/analytics"
+                className="text-caption font-bold text-primary underline hover:text-primary-dark"
+              >
+                전체 분석 보기
+              </Link>
+            </div>
+            {failures === null ? (
+              <p className="mt-3 text-admin-body text-text-sub">불러오는 중…</p>
+            ) : failures.length === 0 ? (
+              <p className="mt-3 text-admin-body text-text-sub">
+                아직 집계할 실패 질문이 없습니다.
+              </p>
+            ) : (
+              <>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  {failureSummary?.reasonRows.map((row) => (
+                    <div
+                      key={row.reason}
+                      className="rounded-btn border border-border-soft bg-admin-soft p-4"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-admin-body font-extrabold text-text">
+                          {row.label}
+                        </h3>
+                        <span className="text-[22px] font-extrabold text-primary tabular-nums">
+                          {row.count}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-note text-text-sub">{row.retention}</p>
+                      <p className="mt-1 text-note text-text-sub">{row.candidate}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-[1.1fr_0.9fr]">
+                  <div className="rounded-btn border border-border-soft bg-white p-4">
+                    <h3 className="text-admin-body font-extrabold text-text">
+                      반복 실패 질문
+                    </h3>
+                    {failureSummary && failureSummary.repeated.length > 0 ? (
+                      <ul className="mt-3 space-y-2">
+                        {failureSummary.repeated.map(([question, count]) => (
+                          <li
+                            key={question}
+                            className="flex items-start justify-between gap-3 rounded-btn-s bg-admin-soft px-3 py-2"
+                          >
+                            <span className="text-note text-text">{question}</span>
+                            <span className="shrink-0 text-caption font-extrabold text-primary tabular-nums">
+                              {count}회
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-3 text-note text-text-sub">
+                        같은 마스킹 질문의 반복 실패는 아직 없습니다.
+                      </p>
+                    )}
+                  </div>
+                  <div className="rounded-btn border border-border-soft bg-admin-soft p-4">
+                    <h3 className="text-admin-body font-extrabold text-text">
+                      승인 및 ACTIVE 반영 기준
+                    </h3>
+                    <ul className="mt-3 space-y-2 text-note text-text-sub">
+                      <li>운영자와 승인자는 반드시 다른 actor여야 합니다.</li>
+                      <li>근거 부족 사유만 KB 후보로 전환됩니다.</li>
+                      <li>승인 후에만 시민 검색 대상인 ACTIVE KB가 됩니다.</li>
+                      <li>질문 텍스트가 30일 경과로 파기되면 후보 작성이 중단됩니다.</li>
+                    </ul>
+                    <div className="mt-4 flex flex-wrap gap-3 text-caption text-text-sub">
+                      <span>후보 전환 대상 {failureSummary?.candidateEligible ?? 0}건</span>
+                      <span>텍스트 파기 {failureSummary?.purged ?? 0}건</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
 
           <section
             aria-label="시민 의견 요약"

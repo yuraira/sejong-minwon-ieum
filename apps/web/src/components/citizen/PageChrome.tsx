@@ -35,7 +35,9 @@ export function CitizenHeader() {
   return (
     <header className="sticky top-0 z-10 border-b border-border-soft bg-white">
       <div className="mx-auto flex w-full max-w-[680px] items-center justify-between px-5 py-3">
-        <Wordmark symbolClassName="h-7 w-7" />
+        <Link href="/" aria-label="민원이음 메인으로 이동" className="rounded-btn-s">
+          <Wordmark symbolClassName="h-7 w-7" />
+        </Link>
         <span className="text-[13px] font-semibold text-text-sub">
           세종특별자치시
         </span>
@@ -73,13 +75,19 @@ export function ChatHeader({
             <path d="m15 18-6-6 6-6" />
           </svg>
         </Link>
-        <span className="shrink-0 text-primary">
-          <Logo className="h-6 w-6" />
-        </span>
-        {/* 워드마크 문법(볼드·검정 수정): 세종·민원 text 볼드 / 이음 primary */}
-        <h1 className="min-w-0 flex-1 truncate text-card-title font-extrabold text-text">
-          세종 민원<span className="text-primary">이음</span>
-        </h1>
+        <Link
+          href="/"
+          aria-label="민원이음 메인으로 이동"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-btn-s"
+        >
+          <span className="shrink-0 text-primary">
+            <Logo className="h-6 w-6" />
+          </span>
+          {/* 워드마크 문법(볼드·검정 수정): 세종·민원 text 볼드 / 이음 primary */}
+          <h1 className="min-w-0 truncate text-card-title font-extrabold text-text">
+            세종 민원<span className="text-primary">이음</span>
+          </h1>
+        </Link>
         {onNewConversation && (
           <button
             type="button"

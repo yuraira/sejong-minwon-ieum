@@ -47,6 +47,7 @@ import RegionSelect from "@/components/citizen/RegionSelect";
 const INITIAL_WAITING_MESSAGE = "공식 자료에서 확인하고 있어요.";
 const SEARCHING_WAITING_MESSAGE = "관련 민원과 공식 출처를 찾고 있어요.";
 const VERIFYING_WAITING_MESSAGE = "답변 근거를 다시 확인하고 있어요.";
+type LoadingPhase = "masking" | "searching" | "verifying";
 
 interface UserMessage {
   role: "user";
@@ -104,6 +105,7 @@ export default function ChatScreen({
   const [waitingMessage, setWaitingMessage] = useState(
     INITIAL_WAITING_MESSAGE,
   );
+  const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>("masking");
   const [failedDraft, setFailedDraft] = useState<FailedDraft | null>(null);
   const idRef = useRef(0);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -124,6 +126,7 @@ export default function ChatScreen({
       if (inFlightRef.current) return;
       inFlightRef.current = true;
       setWaitingMessage(INITIAL_WAITING_MESSAGE);
+      setLoadingPhase("masking");
       setLoading(true);
       setFailedDraft(null);
       if (appendUserMessage) {
@@ -220,11 +223,17 @@ export default function ChatScreen({
   useEffect(() => {
     if (!loading) return;
     const searchingTimer = window.setTimeout(
-      () => setWaitingMessage(SEARCHING_WAITING_MESSAGE),
+      () => {
+        setWaitingMessage(SEARCHING_WAITING_MESSAGE);
+        setLoadingPhase("searching");
+      },
       2_000,
     );
     const verifyingTimer = window.setTimeout(
-      () => setWaitingMessage(VERIFYING_WAITING_MESSAGE),
+      () => {
+        setWaitingMessage(VERIFYING_WAITING_MESSAGE);
+        setLoadingPhase("verifying");
+      },
       6_000,
     );
     return () => {
@@ -318,7 +327,12 @@ export default function ChatScreen({
             />
           ),
         )}
-        {loading && <LoadingSkeleton message={waitingMessage} />}
+        {loading && (
+          <LoadingSkeleton
+            message={waitingMessage}
+            phase={loadingPhase}
+          />
+        )}
 
         {/* 네트워크·서버 오류 - 재시도가 주인공, 뱃지만 danger 톤 (§6-4).
             재시도는 같은 Idempotency-Key를 재사용한다 (계약). */}
@@ -400,7 +414,7 @@ export default function ChatScreen({
               maxLength={1000}
               onChange={(e) => setInput(e.target.value)}
               placeholder="질문을 입력하세요"
-              className="min-h-12 min-w-0 flex-1 rounded-btn border border-border bg-white px-4 text-body text-text placeholder:text-text-faint focus:border-primary"
+              className="min-h-12 min-w-0 flex-1 rounded-btn border border-border bg-white px-4 text-body text-text placeholder:text-text-faint focus:border-primary focus-visible:border-primary"
             />
             <button
               type="submit"
