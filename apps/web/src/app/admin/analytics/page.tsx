@@ -42,8 +42,8 @@ const FALLBACK_POLICY = [
   },
   {
     reason: "개인정보 미해소",
-    retention: "질문 텍스트·이벤트 미저장",
-    handling: "개인정보를 제거한 표현으로 다시 질문하도록 안내",
+    retention: "질문 텍스트·실패 행 미저장",
+    handling: "질문 없는 비식별 처리 메타데이터만 남기고 재질문 안내",
     candidate: "KB 후보 불가",
   },
 ] as const;
